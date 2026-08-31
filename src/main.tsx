@@ -2,6 +2,7 @@ import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { GlobalAudioPlayer } from "./components/GlobalAudioPlayer.tsx";
 import "./index.css";
 
 const Landing = lazy(() => import("./pages/Landing.tsx"));
@@ -40,6 +41,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/fanart" element={<Fanart />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GlobalAudioPlayer />
         </Suspense>
       </BrowserRouter>
     </ConvexProvider>

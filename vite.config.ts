@@ -21,5 +21,8 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
+    watch: {
+      ignored: ['**/*.mp3', '**/*.mp4', '**/*.wav', '**/*.jpg', '**/*.png'],
+    },
   },
 });

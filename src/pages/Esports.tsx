@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router";
 import { Swords, Menu, X, Trophy, ExternalLink } from "lucide-react";
+import { mockNews } from "@/data/esports";
 
 const bezierEase = [0.25, 0.46, 0.45, 0.94] as [number, number, number, number];
 
@@ -28,7 +29,7 @@ function Navbar() {
     <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
             <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
@@ -68,34 +69,18 @@ function Navbar() {
   );
 }
 
-const mockNews = [
-  {
-    id: 1,
-    title: "Talon Esports takes the AIC 2026 Crown",
-    date: "Aug 15, 2026",
-    category: "Tournament",
-    image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=800",
-    excerpt: "In a grueling 7-game series, Talon Esports manages to reverse sweep and claim the international title."
-  },
-  {
-    id: 2,
-    title: "Roster Changes: Summer Split Shakeup",
-    date: "Aug 10, 2026",
-    category: "Roster",
-    image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=800",
-    excerpt: "Several top teams announce major roster changes ahead of the upcoming Winter Regional Qualifiers."
-  },
-  {
-    id: 3,
-    title: "The Rise of Support Carry Meta",
-    date: "Aug 02, 2026",
-    category: "Analysis",
-    image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&q=80&w=800",
-    excerpt: "How professional teams are utilizing high-damage support heroes to dominate the early game."
-  }
-];
 
 export default function Esports() {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  if (typeof document !== 'undefined') {
+    if (selectedImage) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0e] text-white">
       <Navbar />
@@ -122,7 +107,10 @@ export default function Esports() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {mockNews.map((news, idx) => (
               <motion.div key={news.id} variants={fadeUp} initial="hidden" animate="visible" custom={idx} className="group cursor-pointer">
-                <div className="relative aspect-video overflow-hidden border border-[#222] mb-4 group-hover:border-[#dc2626] transition-colors">
+                <div 
+                  onClick={() => setSelectedImage(news.image)}
+                  className="relative aspect-video overflow-hidden border border-[#222] mb-4 group-hover:border-[#dc2626] transition-colors cursor-zoom-in"
+                >
                   <div className="absolute top-3 left-3 z-10 bg-[#dc2626] text-white text-[9px] font-bold tracking-[0.2em] uppercase px-3 py-1">
                     {news.category}
                   </div>
@@ -154,6 +142,36 @@ export default function Esports() {
           </div>
         </div>
       </section>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out"
+          >
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-6 right-6 text-[#888] hover:text-white transition-colors"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <motion.img 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3, ease: bezierEase }}
+              src={selectedImage}
+              alt="Enlarged news image"
+              className="max-w-full max-h-[90vh] object-contain shadow-2xl border border-[#333]"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

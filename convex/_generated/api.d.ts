@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as fanarts from "../fanarts.js";
 import type * as heroes from "../heroes.js";
 
 import type {
@@ -17,6 +18,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  fanarts: typeof fanarts;
   heroes: typeof heroes;
 }>;
 

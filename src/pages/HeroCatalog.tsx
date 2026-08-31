@@ -34,7 +34,7 @@ function Navbar() {
     <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
             <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>

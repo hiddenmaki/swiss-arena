@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { heroes as localHeroes } from "../data/heroes";
+import { mockNews } from "@/data/esports";
+import { heroImgUrl } from "../lib/heroImg";
 import {
   Swords,
   Shield,
@@ -80,7 +82,7 @@ function Navbar() {
     >
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
             <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
@@ -251,43 +253,82 @@ function Hero() {
   );
 }
 
-/* ─── Stats Section ─── */
+/* ─── Hero Parade Section ─── */
 function Stats() {
-  const stats = [
-    { value: "100M+", label: "Downloads", icon: Globe },
-    { value: "50+", label: "Heroes", icon: Crown },
-    { value: "10K+", label: "Esports Prize Pool", icon: Trophy },
-    { value: "200+", label: "Countries", icon: Globe },
-  ];
+  const heroes = useQuery(api.heroes.getAll);
+
+  if (!heroes || heroes.length === 0) return null;
+
+  // Shuffle once and split into two rows
+  const shuffled = [...heroes].sort(() => 0.5 - Math.random());
+  const half = Math.ceil(shuffled.length / 2);
+  const row1 = [...shuffled.slice(0, half), ...shuffled.slice(0, half), ...shuffled.slice(0, half)];
+  const row2 = [...shuffled.slice(half), ...shuffled.slice(half), ...shuffled.slice(half)];
 
   return (
-    <section className="relative py-24 border-y border-[#222]">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-0">
-          {stats.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-50px" }}
-              custom={i}
-              className={`relative py-12 px-6 lg:px-10 text-center border-[#222] ${
-                i % 2 === 0 ? "border-r" : ""
-              } ${i < 2 ? "border-b" : ""} lg:border-b-0 ${
-                i < 3 ? "lg:border-r" : "lg:border-r-0"
-              }`}
-            >
-              <stat.icon className="h-5 w-5 text-[#dc2626] mx-auto mb-4" strokeWidth={1.5} />
-              <div className="text-4xl lg:text-5xl font-black text-white tracking-tight">{stat.value}</div>
-              <div className="text-[10px] font-medium tracking-[0.2em] uppercase text-[#666] mt-3">{stat.label}</div>
-            </motion.div>
-          ))}
-        </div>
+    <section className="relative py-0 border-y border-[#222] overflow-hidden">
+      {/* Top fade */}
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+      {/* Left fade */}
+      <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+      {/* Right fade */}
+      <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+
+      {/* Row 1 — scroll left */}
+      <div
+        className="flex gap-2 mb-2"
+        style={{ animation: "fanart-scroll 60s linear infinite", width: "max-content" }}
+      >
+        {row1.map((hero, i) => (
+          <div
+            key={`r1-${hero.id}-${i}`}
+            className="relative flex-shrink-0 w-28 h-36 overflow-hidden bg-[#111] group"
+          >
+            <img
+              src={heroImgUrl(hero.name)}
+              alt={hero.name}
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-50 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e]/80 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="text-[9px] font-bold text-white uppercase tracking-wider truncate">{hero.name}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Row 2 — scroll right */}
+      <div
+        className="flex gap-2"
+        style={{ animation: "fanart-scroll-reverse 50s linear infinite", width: "max-content" }}
+      >
+        {row2.map((hero, i) => (
+          <div
+            key={`r2-${hero.id}-${i}`}
+            className="relative flex-shrink-0 w-28 h-36 overflow-hidden bg-[#111] group"
+          >
+            <img
+              src={heroImgUrl(hero.name)}
+              alt={hero.name}
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-50 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e]/80 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="text-[9px] font-bold text-white uppercase tracking-wider truncate">{hero.name}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
+
 
 /* ─── System Tools Section ─── */
 function Features() {
@@ -402,133 +443,88 @@ function Features() {
   );
 }
 
-/* ─── Hero Spotlight Section ─── */
-function HeroSpotlight() {
-  const heroes = [
-    {
-      name: "Butterfly",
-      role: "Assassin",
-      description: "A lethal blade dancer who resets cooldowns on kills, enabling devastating multi-target combos.",
-      stats: { damage: 95, mobility: 90, durability: 40, utility: 30 },
-    },
-    {
-      name: "Valhein",
-      role: "Marksman",
-      description: "A relentless marksman who slows enemies with each hit, controlling the pace of every engagement.",
-      stats: { damage: 92, mobility: 65, durability: 35, utility: 70 },
-    },
-    {
-      name: "Krixi",
-      role: "Mage",
-      description: "An ethereal sorceress channeling devastating area-of-effect spells that reshape teamfights.",
-      stats: { damage: 90, mobility: 50, durability: 30, utility: 80 },
-    },
-  ];
+/* ─── Fanart Showcase Section ─── */
+function FanartShowcase() {
+  const fanarts = useQuery(api.fanarts.list);
+  const [displayArts, setDisplayArts] = useState<any[]>([]);
 
-  const [active, setActive] = useState(0);
-  const current = heroes[active];
+  useEffect(() => {
+    if (fanarts && displayArts.length === 0 && fanarts.length > 0) {
+      const shuffled = [...fanarts].sort(() => 0.5 - Math.random());
+      setDisplayArts(shuffled);
+    }
+  }, [fanarts]);
+
+  // Duplicate items for seamless infinite loop
+  const belt = displayArts.length > 0 ? [...displayArts, ...displayArts, ...displayArts] : [];
 
   return (
-    <section className="relative py-32 border-y border-[#222]" id="heroes">
+    <section className="relative py-32 border-y border-[#222]" id="fanart">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="mb-20"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px w-12 bg-[#2563eb]" />
-            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#2563eb]">Hero Roster</span>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px w-12 bg-[#10b981]" />
+              <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#10b981]">Community</span>
+            </div>
+            <h2 className="text-4xl lg:text-6xl font-black text-white tracking-tight">
+              FANART
+              <br />
+              <span className="text-[#666]">GALLERY</span>
+            </h2>
           </div>
-          <h2 className="text-4xl lg:text-6xl font-black text-white tracking-tight">
-            CHOOSE YOUR
-            <br />
-            <span className="text-[#2563eb]">CHAMPION</span>
-          </h2>
+          <Link to="/fanart" className="inline-flex items-center border border-[#222] text-[#888] hover:text-white hover:border-white text-[10px] font-bold tracking-[0.2em] uppercase px-8 py-3 transition-colors">
+            View All Fanarts <ChevronRight className="w-4 h-4 ml-2" />
+          </Link>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          <div className="lg:col-span-4 space-y-0">
-            {heroes.map((hero, i) => (
-              <button
-                key={hero.name}
-                onClick={() => setActive(i)}
-                className={`w-full text-left p-6 border-l-2 transition-all duration-300 ${
-                  i === active
-                    ? "border-l-[#dc2626] bg-[#111]"
-                    : "border-l-transparent hover:bg-[#0d0d0d]"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-[10px] font-bold tracking-[0.2em] text-[#333]">0{i + 1}</span>
-                  <div>
-                    <div className={`text-sm font-bold tracking-tight transition-colors ${i === active ? "text-white" : "text-[#888]"}`}>
-                      {hero.name}
-                    </div>
-                    <div className="text-[10px] tracking-[0.15em] uppercase text-[#555] mt-0.5">{hero.role}</div>
+        {!fanarts ? (
+           <div className="py-20 flex justify-center opacity-50"><div className="w-8 h-8 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" /></div>
+        ) : displayArts.length === 0 && fanarts.length === 0 ? (
+           <div className="py-20 text-center text-[#666] text-sm uppercase tracking-widest font-bold">No Fanarts Yet</div>
+        ) : (
+          <div className="relative overflow-hidden">
+            {/* Left fade */}
+            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+            {/* Right fade */}
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+
+            <div
+              className="flex gap-4"
+              style={{
+                animation: "fanart-scroll 30s linear infinite",
+                width: "max-content",
+              }}
+            >
+              {belt.map((art, i) => (
+                <Link
+                  to="/fanart"
+                  key={`${art._id}-${i}`}
+                  className="group relative flex-shrink-0 w-56 h-72 overflow-hidden bg-[#111] border border-[#222] hover:border-[#10b981] transition-colors"
+                >
+                  {art.imageUrl && (
+                    <img
+                      src={art.imageUrl}
+                      alt={art.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e] via-[#0a0a0e]/20 to-transparent opacity-90 group-hover:opacity-80 transition-opacity" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-sm font-bold text-white tracking-tight mb-1 truncate">{art.title}</h3>
+                    <div className="text-[9px] tracking-[0.1em] uppercase text-[#10b981]">By {art.artist}</div>
                   </div>
-                  {i === active && <ChevronRight className="h-4 w-4 text-[#dc2626] ml-auto" />}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: bezierEase }}
-            className="lg:col-span-8"
-          >
-            <div className="bg-[#0d0d0d] border border-[#222] p-8 lg:p-12">
-              <div className="flex items-start justify-between mb-10">
-                <div>
-                  <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#dc2626] mb-3">Hero Spotlight</div>
-                  <h3 className="text-3xl lg:text-4xl font-black text-white tracking-tight">{current.name}</h3>
-                  <div className="text-[11px] tracking-[0.2em] uppercase text-[#666] mt-2">{current.role}</div>
-                </div>
-                <div className="w-16 h-16 bg-[#dc2626/0.1] flex items-center justify-center">
-                  <Swords className="h-8 w-8 text-[#dc2626]" strokeWidth={1.5} />
-                </div>
-              </div>
-
-              <p className="text-sm leading-relaxed text-[#888] max-w-lg mb-10">{current.description}</p>
-
-              <div className="space-y-5">
-                {Object.entries(current.stats).map(([stat, value]) => (
-                  <div key={stat}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#666]">{stat}</span>
-                      <span className="text-[10px] font-bold tracking-[0.15em] text-white">{value}</span>
-                    </div>
-                    <div className="h-1 bg-[#1a1a1a]">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${value}%` }}
-                        transition={{ duration: 0.8, delay: 0.2, ease: bezierEase }}
-                        className={`h-full ${
-                          stat === "damage"
-                            ? "bg-[#dc2626]"
-                            : stat === "mobility"
-                            ? "bg-[#3b82f6]"
-                            : stat === "durability"
-                            ? "bg-[#dc2626/0.6]"
-                            : "bg-[#3b82f6/0.6]"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                </Link>
+              ))}
             </div>
-          </motion.div>
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );
 }
+
 
 /* ─── Game Modes Section ─── */
 function GameModes() {
@@ -538,24 +534,28 @@ function GameModes() {
       subtitle: "CLASSIC MOBA",
       description: "Three lanes, five roles, full strategy. The definitive Arena of Valor experience on the standard three-lane map.",
       accent: "red",
+      image: "/mode_5v5.jpg"
     },
     {
       title: "3v3 Rapid",
       subtitle: "FAST PACED",
       description: "Compact map, faster games. Perfect for quick sessions where every fight counts.",
       accent: "blue",
+      image: "/mode_3v3.jpg"
     },
     {
-      title: "Battle Royale",
-      subtitle: "LAST TEAM STANDING",
-      description: "50 heroes dropped into a shrinking arena. Loot, craft, and fight to be the last team standing.",
+      title: "Championship",
+      subtitle: "TOURNAMENT SERIES",
+      description: "Prove your worth in Solo Champion, Double, Triple, and achieve the ultimate Grand Slam title.",
       accent: "red",
+      image: "/mode_champ.jpg"
     },
     {
       title: "1v1 Duel",
       subtitle: "SKILL MATCH",
       description: "Pure mechanical skill. No teammates, no excuses — prove your individual mastery.",
       accent: "blue",
+      image: "/mode_1v1.jpg"
     },
   ];
 
@@ -589,17 +589,38 @@ function GameModes() {
               whileInView="visible"
               viewport={{ once: true, margin: "-30px" }}
               custom={i}
-              className="bg-[#0a0a0e] p-10 lg:p-14 group hover:bg-[#0d0d0d] transition-colors duration-500"
+              className={`group relative bg-[#0a0a0e] border border-transparent p-10 lg:p-14 transition-all duration-500 overflow-hidden min-h-[320px] flex flex-col justify-end ${
+                mode.accent === 'red' ? 'hover:border-[#dc2626]/30' : 'hover:border-[#3b82f6]/30'
+              }`}
             >
-              <div className="flex items-center gap-3 mb-6">
-                <span className={`text-[9px] font-bold tracking-[0.3em] uppercase px-3 py-1.5 ${mode.accent === "red" ? "bg-[#dc2626/0.1] text-[#dc2626]" : "bg-[#2563eb/0.1] text-[#3b82f6]"}`}>
-                  {mode.subtitle}
-                </span>
+              {/* Background glow on hover */}
+              <div className={`absolute -right-20 -top-20 w-64 h-64 opacity-0 group-hover:opacity-10 blur-3xl rounded-full transition-opacity duration-700 ${mode.accent === 'red' ? 'bg-[#dc2626]' : 'bg-[#2563eb]'}`} />
+              
+              {/* Mode Background Image */}
+              <div className="absolute inset-0 z-0 overflow-hidden bg-[#0a0a0e]">
+                <img
+                  src={mode.image}
+                  alt={mode.title}
+                  className="w-full h-full object-cover opacity-50 group-hover:opacity-80 transition-all duration-700 scale-105 group-hover:scale-100 mix-blend-luminosity group-hover:mix-blend-normal"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                {/* Gradient Overlay to ensure text readability */}
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0e]/40 via-[#0a0a0e]/70 to-[#0a0a0e]/90 group-hover:from-[#0a0a0e]/20 group-hover:via-[#0a0a0e]/50 group-hover:to-[#0a0a0e]/80 transition-all duration-700" />
               </div>
-              <h3 className="text-2xl lg:text-3xl font-black text-white tracking-tight mb-4 group-hover:text-[#dc2626] transition-colors">
-                {mode.title}
-              </h3>
-              <p className="text-sm leading-relaxed text-[#666] max-w-md">{mode.description}</p>
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className={`text-[9px] font-bold tracking-[0.3em] uppercase px-3 py-1.5 ${mode.accent === "red" ? "bg-[#dc2626/0.1] text-[#dc2626]" : "bg-[#2563eb/0.1] text-[#3b82f6]"}`}>
+                    {mode.subtitle}
+                  </span>
+                </div>
+                <h3 className={`text-2xl lg:text-3xl font-black text-white tracking-tight mb-4 transition-colors ${
+                  mode.accent === 'red' ? 'group-hover:text-[#dc2626]' : 'group-hover:text-[#3b82f6]'
+                }`}>
+                  {mode.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-[#666] max-w-md">{mode.description}</p>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -610,86 +631,86 @@ function GameModes() {
 
 /* ─── Esports Section ─── */
 function Esports() {
-  const events = [
-    { title: "AoV World Cup 2026", date: "JAN 2026", location: "Bangkok, Thailand", prize: "$2,000,000", status: "upcoming" },
-    { title: "Regional Championship", date: "MAR 2026", location: "Online — SEA", prize: "$500,000", status: "upcoming" },
-    { title: "World Cup 2025 Finals", date: "DEC 2025", location: "Jakarta, Indonesia", prize: "$2,000,000", status: "completed" },
-  ];
+  const displayNews = mockNews.slice(0, 3);
 
   return (
     <section className="relative py-32 border-y border-[#222]" id="esports">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          <div className="lg:col-span-5">
-            <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-px w-12 bg-[#dc2626]" />
-                <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#dc2626]">Esports</span>
-              </div>
-              <h2 className="text-4xl lg:text-5xl font-black text-white tracking-tight mb-8">
-                COMPETE AT
-                <br />
-                <span className="text-[#dc2626]">THE HIGHEST</span>
-                <br />
-                LEVEL
-              </h2>
-              <p className="text-sm leading-relaxed text-[#888] max-w-md mb-10">
-                From weekly ranked matches to the World Cup stage — Arena of
-                Valor's esports ecosystem rewards the most skilled and
-                dedicated players on the planet.
-              </p>
-              <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-                <span className="inline-flex items-center border border-[#dc2626] text-[#dc2626] hover:bg-[#dc2626] hover:text-white text-[11px] font-bold tracking-[0.2em] uppercase px-8 py-3 h-11 bg-transparent cursor-pointer transition-colors">
-                  <Trophy className="h-4 w-4 mr-2" />
-                  View Esports Hub
-                </span>
-              </a>
-            </motion.div>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px w-12 bg-[#dc2626]" />
+              <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#dc2626]">Esports</span>
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-black text-white tracking-tight">
+              COMPETITIVE
+              <br />
+              <span className="text-[#dc2626]">NEWS</span>
+            </h2>
           </div>
+          <Link to="/esports" className="inline-flex items-center border border-[#dc2626] text-[#dc2626] hover:bg-[#dc2626] hover:text-white text-[10px] font-bold tracking-[0.2em] uppercase px-8 py-3 transition-colors">
+            <Trophy className="h-4 w-4 mr-2" />
+            View Esports Hub
+          </Link>
+        </motion.div>
 
-          <div className="lg:col-span-7 space-y-0">
-            {events.map((event, i) => (
-              <motion.div
-                key={event.title}
-                variants={slideIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                custom={i}
-                className="border-b border-[#222] py-8 group"
-              >
-                <div className="flex items-start justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-[#555]">{event.date}</span>
-                      {event.status === "upcoming" && (
-                        <span className="text-[9px] font-bold tracking-[0.15em] uppercase px-2 py-0.5 bg-[#dc2626/0.15] text-[#dc2626]">Upcoming</span>
-                      )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {displayNews.map((news, i) => (
+             <motion.div key={news.id} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} className="group bg-[#0a0a0e] border border-[#222] hover:border-[#dc2626] transition-colors overflow-hidden flex flex-col">
+                <Link to="/esports" className="flex flex-col h-full">
+                  <div className="relative aspect-video overflow-hidden">
+                    <div className="absolute top-4 left-4 z-10 bg-[#dc2626] text-white text-[9px] font-bold tracking-[0.2em] uppercase px-3 py-1">
+                      {news.category}
                     </div>
-                    <h3 className="text-lg font-bold text-white tracking-tight group-hover:text-[#dc2626] transition-colors">{event.title}</h3>
-                    <div className="text-[11px] tracking-[0.1em] text-[#555] mt-2">{event.location}</div>
+                    <img src={news.image} alt={news.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e] via-[#0a0a0e]/20 to-transparent opacity-90" />
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-black text-[#dc2626]">{event.prize}</div>
-                    <div className="text-[9px] tracking-[0.2em] uppercase text-[#333] mt-1">Prize Pool</div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="text-[9px] tracking-[0.1em] text-[#666] mb-3">{news.date}</div>
+                    <h3 className="text-lg font-bold text-white tracking-tight mb-3 group-hover:text-[#dc2626] transition-colors">{news.title}</h3>
+                    <p className="text-sm text-[#888] line-clamp-2 mt-auto">{news.excerpt}</p>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </Link>
+             </motion.div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
+/* ─── Brand Icons ─── */
+const DiscordIcon = (props: any) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" fill="currentColor" {...props}>
+    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+  </svg>
+);
+
+const FacebookIcon = (props: any) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02z"/>
+  </svg>
+);
+
+const YouTubeIcon = (props: any) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/>
+  </svg>
+);
+
+const InstagramIcon = (props: any) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.64-.07-4.85s.01-3.58.07-4.85C2.38 3.85 3.89 2.3 7.15 2.15c1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07c-4.27.2-6.78 2.71-6.98 6.98C.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.27 2.71 6.78 6.98 6.98 1.28.06 1.69.07 4.95.07s3.67-.01 4.95-.07c4.27-.2 6.78-2.71 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.2-4.27-2.71-6.78-6.98-6.98C15.67.01 15.26 0 12 0zm0 5.83a6.17 6.17 0 1 0 0 12.34 6.17 6.17 0 0 0 0-12.34zm0 10.18a4.01 4.01 0 1 1 0-8.02 4.01 4.01 0 0 1 0 8.02zm3.9-9.15a1.44 1.44 0 1 0 0-2.88 1.44 1.44 0 0 0 0 2.88z"/>
+  </svg>
+);
+
 /* ─── Community Section ─── */
 function Community() {
   const channels = [
-    { label: "Discord", members: "2.4M Members", icon: Users },
-    { label: "Facebook", members: "18M Likes", icon: Globe },
-    { label: "YouTube", members: "5.2M Subscribers", icon: Play },
-    { label: "Instagram", members: "8.7M Followers", icon: Star },
+    { label: "Discord", members: "2.4M Members", icon: DiscordIcon, href: "https://discord.com/invite/rov-mvp-club-1148485520540844122" },
+    { label: "Facebook", members: "18M Likes", icon: FacebookIcon, href: "https://www.facebook.com/ROVTH" },
+    { label: "YouTube", members: "5.2M Subscribers", icon: YouTubeIcon, href: "https://www.youtube.com/GarenaRoVThailand" },
+    { label: "Instagram", members: "8.7M Followers", icon: InstagramIcon, href: "https://www.instagram.com/garena_rov_official" },
   ];
 
   return (
@@ -717,7 +738,7 @@ function Community() {
           {channels.map((channel, i) => (
             <motion.a
               key={channel.label}
-              href="https://www.garena.com"
+              href={channel.href}
               target="_blank"
               rel="noopener noreferrer"
               variants={fadeUp}
@@ -896,7 +917,7 @@ export default function Landing() {
       <Hero />
       <Stats />
       <Features />
-      <HeroSpotlight />
+      <FanartShowcase />
       <GameModes />
       <Esports />
       <Community />

@@ -30,4 +30,10 @@ export default defineSchema({
     synergies: v.array(v.string()),
     lane: v.optional(v.string()),
   }).index("by_hero_id", ["id"]),
+  fanarts: defineTable({
+    title: v.string(),
+    artist: v.string(),
+    storageId: v.id("_storage"),
+    likes: v.number(),
+  }),
 });

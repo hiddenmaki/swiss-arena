@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Link } from "react-router";
 import { Swords, Menu, X, Crown, RotateCcw, Download, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
-import { heroes, type Hero } from "@/data/heroes";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { heroImgUrl } from "../lib/heroImg";
 
 const bezierEase = [0.25, 0.46, 0.45, 0.94] as [number, number, number, number];
@@ -39,7 +40,7 @@ function Navbar() {
     <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
             <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
@@ -85,20 +86,24 @@ export default function Tierlist() {
   const tierlistRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Initialize state based on hero default tiers
-  const initialTierData = useMemo(() => {
-    const data: Record<string, Hero[]> = { S: [], A: [], B: [], C: [], D: [], UNASSIGNED: [] };
-    heroes.forEach((h) => {
-      if (h.tier && data[h.tier]) {
-        data[h.tier].push(h);
-      } else {
-        data.UNASSIGNED.push(h);
-      }
-    });
-    return data;
-  }, []);
+  const dbHeroes = useQuery(api.heroes.getAll);
+  const [tierData, setTierData] = useState<Record<string, any[]> | null>(null);
 
-  const [tierData, setTierData] = useState(initialTierData);
+  // Initialize state based on hero default tiers once data loads
+  useMemo(() => {
+    if (dbHeroes && !tierData) {
+      const data: Record<string, any[]> = { S: [], A: [], B: [], C: [], D: [], UNASSIGNED: [] };
+      dbHeroes.forEach((h) => {
+        if (h.tier && data[h.tier]) {
+          data[h.tier].push(h);
+        } else {
+          data.UNASSIGNED.push(h);
+        }
+      });
+      setTierData(data);
+    }
+  }, [dbHeroes, tierData]);
+
   const [draggedItem, setDraggedItem] = useState<{ id: string; sourceTier: string } | null>(null);
 
   const handleDragStart = (e: React.DragEvent, id: string, sourceTier: string) => {
@@ -124,6 +129,7 @@ export default function Tierlist() {
     }
 
     setTierData((prev) => {
+      if (!prev) return prev;
       const sourceList = [...prev[sourceTier]];
       const targetList = [...prev[targetTier]];
       
@@ -144,7 +150,8 @@ export default function Tierlist() {
   };
 
   const resetTiers = () => {
-    const next: Record<string, Hero[]> = { S: [], A: [], B: [], C: [], D: [], UNASSIGNED: [...heroes] };
+    if (!dbHeroes) return;
+    const next: Record<string, any[]> = { S: [], A: [], B: [], C: [], D: [], UNASSIGNED: [...dbHeroes] };
     setTierData(next);
   };
 
@@ -169,7 +176,7 @@ export default function Tierlist() {
     }
   };
 
-  const renderHeroCard = (hero: Hero, currentTier: string) => (
+  const renderHeroCard = (hero: any, currentTier: string) => (
     <div
       key={hero.id}
       draggable
@@ -236,7 +243,14 @@ export default function Tierlist() {
       <section className="py-12">
         <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
           
-          {/* Tier Grid */}
+          {!tierData ? (
+            <div className="flex flex-col items-center justify-center py-32 text-[#666]">
+              <Loader2 className="w-8 h-8 animate-spin mb-4 text-[#dc2626]" />
+              <p>Loading heroes from database...</p>
+            </div>
+          ) : (
+            <>
+              {/* Tier Grid */}
           <div ref={tierlistRef} className="bg-[#050505] border border-[#222] mb-12 flex flex-col">
             {TIERS.map((tier) => (
               <div key={tier} className="flex flex-col md:flex-row border-b border-[#222] last:border-b-0">
@@ -281,6 +295,8 @@ export default function Tierlist() {
               )}
             </div>
           </div>
+          </>
+          )}
 
         </div>
       </section>

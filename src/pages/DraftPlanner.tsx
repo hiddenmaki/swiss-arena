@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router";
-import { Swords, Search, X, Menu, Crown, Clock, CheckCircle2, Shield, ChevronLeft, ChevronRight } from "lucide-react";
-import { heroes, type Hero, type HeroRole } from "@/data/heroes";
+import { Swords, Search, X, Menu, Crown, Clock, CheckCircle2, Shield, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { type Hero, type HeroRole } from "@/data/heroes";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { heroImgUrl } from "../lib/heroImg";
 
 const bezierEase = [0.25, 0.46, 0.45, 0.94] as [number, number, number, number];
@@ -30,7 +32,7 @@ function Navbar() {
     <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
       <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
             <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
             <div>
               <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
@@ -71,7 +73,7 @@ function Navbar() {
 }
 
 // ─── Draft Sequence Logic ───
-type DraftAction = { side: "blue" | "red"; type: "ban" | "pick" };
+type DraftAction = { side: "blue" | "red"; type: "ban" | "pick"; expectedRole?: HeroRole };
 
 // Global Ban/Pick Rule (18 steps)
 const DRAFT_SEQUENCE: DraftAction[] = [
@@ -79,17 +81,17 @@ const DRAFT_SEQUENCE: DraftAction[] = [
   { side: "blue", type: "ban" }, { side: "red", type: "ban" },
   { side: "blue", type: "ban" }, { side: "red", type: "ban" },
   // Phase 1 Picks (3 each)
-  { side: "blue", type: "pick" },
-  { side: "red", type: "pick" }, { side: "red", type: "pick" },
-  { side: "blue", type: "pick" }, { side: "blue", type: "pick" },
-  { side: "red", type: "pick" },
+  { side: "blue", type: "pick", expectedRole: "Warrior" },
+  { side: "red", type: "pick", expectedRole: "Warrior" }, { side: "red", type: "pick", expectedRole: "Assassin" },
+  { side: "blue", type: "pick", expectedRole: "Assassin" }, { side: "blue", type: "pick", expectedRole: "Mage" },
+  { side: "red", type: "pick", expectedRole: "Mage" },
   // Phase 2 Bans (2 each)
   { side: "red", type: "ban" }, { side: "blue", type: "ban" },
   { side: "red", type: "ban" }, { side: "blue", type: "ban" },
   // Phase 2 Picks (2 each)
-  { side: "red", type: "pick" },
-  { side: "blue", type: "pick" }, { side: "blue", type: "pick" },
-  { side: "red", type: "pick" },
+  { side: "red", type: "pick", expectedRole: "Marksman" },
+  { side: "blue", type: "pick", expectedRole: "Marksman" }, { side: "blue", type: "pick", expectedRole: "Support" },
+  { side: "red", type: "pick", expectedRole: "Support" },
 ];
 
 export default function DraftPlanner() {
@@ -111,7 +113,14 @@ export default function DraftPlanner() {
   const isDraftComplete = currentStep >= DRAFT_SEQUENCE.length;
   const currentAction = isDraftComplete ? null : DRAFT_SEQUENCE[currentStep];
 
+  const dbHeroes = useQuery(api.heroes.getAll);
+
   // Timer logic
+  const latestDraftState = useRef({ draftData, currentStep, currentAction, dbHeroes, isDraftComplete });
+  useEffect(() => {
+    latestDraftState.current = { draftData, currentStep, currentAction, dbHeroes, isDraftComplete };
+  });
+
   useEffect(() => {
     if (isDraftComplete) return;
     const timer = setInterval(() => {
@@ -119,6 +128,44 @@ export default function DraftPlanner() {
     }, 1000);
     return () => clearInterval(timer);
   }, [currentStep, isDraftComplete]);
+
+  useEffect(() => {
+    if (timeLeft === 0) {
+      const { draftData, currentStep, currentAction, dbHeroes, isDraftComplete } = latestDraftState.current;
+      if (isDraftComplete || !currentAction || !dbHeroes) return;
+
+      if (currentAction.type === "ban") {
+        setDraftData((prev) => {
+          const next = [...prev];
+          next[currentStep] = null;
+          return next;
+        });
+      } else {
+        const used = new Set<string>();
+        draftData.forEach((h) => h && used.add(h.id));
+        let available = dbHeroes.filter((h) => !used.has(h.id));
+        
+        if (currentAction.expectedRole) {
+          const rolePool = available.filter(h => h.role === currentAction.expectedRole);
+          if (rolePool.length > 0) available = rolePool;
+        }
+        
+        const randomHero = available[Math.floor(Math.random() * available.length)];
+        setDraftData((prev) => {
+          const next = [...prev];
+          next[currentStep] = (randomHero as unknown as Hero) || null;
+          return next;
+        });
+      }
+      
+      setSelectedHero(null);
+      setSearchQuery("");
+      setCurrentStep(currentStep + 1);
+      setTimeLeft(30);
+    }
+  }, [timeLeft]);
+
+
 
   // Derived state for easy rendering
   const allUsed = useMemo(() => {
@@ -128,13 +175,14 @@ export default function DraftPlanner() {
   }, [draftData]);
 
   const filteredHeroes = useMemo(() => {
-    let list = heroes.filter((h) => !allUsed.has(h.id));
+    if (!dbHeroes) return [];
+    let list = dbHeroes.filter((h) => !allUsed.has(h.id));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(h => h.name.toLowerCase().includes(q) || h.role.toLowerCase().includes(q));
     }
     return list;
-  }, [allUsed, searchQuery]);
+  }, [allUsed, searchQuery, dbHeroes]);
 
   // Helper to extract team specific picks/bans
   const getTeamData = (side: "blue" | "red", type: "pick" | "ban") => {
@@ -190,17 +238,33 @@ export default function DraftPlanner() {
       
       {hero ? (
         <div className="flex items-center gap-4 z-10">
-          <div className="w-12 h-12 bg-[#1a1a1a] rounded-sm flex items-center justify-center flex-shrink-0">
-            <Crown className={`h-5 w-5 ${side === "blue" ? "text-[#3b82f6]" : "text-[#dc2626]"}`} />
+          <div className="w-12 h-12 bg-[#1a1a1a] border border-[#333] rounded-sm flex flex-shrink-0 overflow-hidden relative shadow-lg">
+            <img 
+              src={heroImgUrl(hero.name)} 
+              alt={hero.name}
+              className="absolute inset-0 w-full h-full object-cover object-top"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
           </div>
-          <div>
-            <div className="font-black text-white text-lg tracking-tight uppercase">{hero.name}</div>
-            <div className="text-[10px] tracking-[0.2em] uppercase text-[#666]">{hero.role}</div>
+          <div className="relative z-10">
+            <div className="font-black text-white text-lg tracking-tight uppercase drop-shadow-md">{hero.name}</div>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-[#ccc] drop-shadow-md font-bold">{hero.role}</div>
+          </div>
+          {/* Background image fade for pick slot */}
+          <div className="absolute inset-0 z-0 opacity-20 mask-image-linear-right pointer-events-none">
+            <img 
+              src={heroImgUrl(hero.name)} 
+              alt=""
+              className="w-full h-full object-cover object-center filter blur-[2px]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent" />
           </div>
         </div>
       ) : (
-        <div className="flex items-center opacity-30 z-10">
+        <div className="flex flex-col items-center opacity-30 z-10">
           <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#888]">PICK {index + 1}</span>
+          <span className="text-[8px] tracking-[0.2em] uppercase text-[#555] mt-1">{getExpectedRole(side, "pick", index)}</span>
         </div>
       )}
     </div>
@@ -216,12 +280,18 @@ export default function DraftPlanner() {
     >
       {hero ? (
         <>
-          <div className="absolute inset-0 bg-black/40 z-10" />
-          <Shield className="absolute h-5 w-5 text-[#555] z-20 opacity-50" />
-          <span className="relative z-30 text-[8px] font-bold tracking-tighter uppercase truncate w-full text-center px-1 text-[#888]">
-            {hero.name}
-          </span>
-          <div className="absolute top-0 right-0 bottom-0 left-0 border-2 border-red-900/30 line-through z-40 pointer-events-none" />
+          <img 
+            src={heroImgUrl(hero.name)} 
+            alt={hero.name}
+            className="absolute inset-0 w-full h-full object-cover object-top grayscale opacity-60"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-red-950/60 mix-blend-multiply z-10" />
+          <div className="absolute top-0 right-0 bottom-0 left-0 border-2 border-red-600/50 z-40 pointer-events-none overflow-hidden">
+            {/* Diagonal line for ban */}
+            <div className="absolute w-[150%] h-0.5 bg-red-600/80 -rotate-45 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shadow-[0_0_5px_rgba(220,38,38,0.8)]" />
+          </div>
         </>
       ) : (
         <span className="text-[10px] font-bold text-[#333]">{index + 1}</span>
@@ -242,6 +312,17 @@ export default function DraftPlanner() {
       }
     }
     return countBefore === index;
+  };
+
+  const getExpectedRole = (side: "blue" | "red", type: "pick" | "ban", index: number) => {
+    let count = 0;
+    for (let i = 0; i < DRAFT_SEQUENCE.length; i++) {
+      if (DRAFT_SEQUENCE[i].side === side && DRAFT_SEQUENCE[i].type === type) {
+        if (count === index) return DRAFT_SEQUENCE[i].expectedRole;
+        count++;
+      }
+    }
+    return undefined;
   };
 
   return (
@@ -333,12 +414,17 @@ export default function DraftPlanner() {
 
           {/* Hero Grid */}
           <div className="flex-1 overflow-y-auto p-4 lg:p-6 pb-40 lg:pb-32">
-            {!isDraftComplete && (
+            {!dbHeroes ? (
+              <div className="h-full flex flex-col items-center justify-center text-[#666]">
+                <Loader2 className="w-8 h-8 animate-spin mb-4 text-[#dc2626]" />
+                <p>Loading heroes from database...</p>
+              </div>
+            ) : !isDraftComplete && (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 lg:gap-3">
                 {filteredHeroes.map(hero => (
                   <button
                     key={hero.id}
-                    onClick={() => handleSelectHero(hero)}
+                    onClick={() => handleSelectHero(hero as unknown as Hero)}
                     className={`relative aspect-[3/4] border transition-all overflow-hidden flex flex-col justify-end p-2 lg:p-3 ${
                       selectedHero?.id === hero.id 
                         ? currentAction?.side === "blue" ? "border-[#3b82f6] shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-105 z-10" : "border-[#dc2626] shadow-[0_0_15px_rgba(220,38,38,0.3)] scale-105 z-10"
@@ -384,7 +470,7 @@ export default function DraftPlanner() {
 
           {/* Bottom Action Bar (Lock In) */}
           {!isDraftComplete && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-6 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent flex justify-center pointer-events-none z-20">
+            <div className="fixed bottom-0 left-0 right-0 p-4 lg:p-6 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent flex justify-center pointer-events-none z-[100]">
               <AnimatePresence>
                 {selectedHero && (
                   <motion.div
