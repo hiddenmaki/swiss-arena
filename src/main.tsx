@@ -12,7 +12,12 @@ const Tierlist = lazy(() => import("./pages/Tierlist.tsx"));
 const PatchNotes = lazy(() => import("./pages/PatchNotes.tsx"));
 const Esports = lazy(() => import("./pages/Esports.tsx"));
 const Fanart = lazy(() => import("./pages/Fanart.tsx"));
+const CounterMaker = lazy(() => import("./pages/CounterMaker.tsx"));
+const Ranks = lazy(() => import("./pages/Ranks.tsx"));
+const Winrate = lazy(() => import("./pages/Winrate.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+
+import { Layout } from "./components/Layout.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -32,14 +37,19 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <Suspense fallback={<Loading />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/heroes" element={<HeroCatalog />} />
-            <Route path="/draft" element={<DraftPlanner />} />
-            <Route path="/tierlist" element={<Tierlist />} />
-            <Route path="/patch-notes" element={<PatchNotes />} />
-            <Route path="/esports" element={<Esports />} />
-            <Route path="/fanart" element={<Fanart />} />
-            <Route path="*" element={<NotFound />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Landing />} />
+              <Route path="/heroes" element={<HeroCatalog />} />
+              <Route path="/draft" element={<DraftPlanner />} />
+              <Route path="/tierlist" element={<Tierlist />} />
+              <Route path="/patch-notes" element={<PatchNotes />} />
+              <Route path="/esports" element={<Esports />} />
+              <Route path="/fanart" element={<Fanart />} />
+              <Route path="/counter-maker" element={<CounterMaker />} />
+              <Route path="/ranks" element={<Ranks />} />
+              <Route path="/winrate" element={<Winrate />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Routes>
           <GlobalAudioPlayer />
         </Suspense>
@@ -47,3 +57,4 @@ createRoot(document.getElementById("root")!).render(
     </ConvexProvider>
   </StrictMode>
 );
+

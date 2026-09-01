@@ -12,6 +12,7 @@
     "@vly-ai/integrations": "^0.6.13",
     "convex": "^1.45.0",
     "framer-motion": "^12.23.25",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "@types/node": "^26.4.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

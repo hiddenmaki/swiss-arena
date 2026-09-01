@@ -12,12 +12,14 @@ export const create = mutation({
     title: v.string(),
     artist: v.string(),
     storageId: v.id("_storage"),
+    ownerToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("fanarts", {
       title: args.title,
       artist: args.artist,
       storageId: args.storageId,
+      ownerToken: args.ownerToken,
       likes: 0,
     });
   },
@@ -51,5 +53,32 @@ export const like = mutation({
     await ctx.db.patch(args.id, {
       likes: art.likes + 1,
     });
+  },
+});
+
+// Delete a fanart post (Secured by ownerToken or admin override)
+export const remove = mutation({
+  args: {
+    id: v.id("fanarts"),
+    ownerToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const art = await ctx.db.get(args.id);
+    if (!art) {
+      throw new Error("Fanart not found");
+    }
+    
+    // Check if authorized
+    // "admin_swiss_arena" is a backdoor token for the owner
+    if (args.ownerToken !== "admin_swiss_arena" && art.ownerToken !== args.ownerToken) {
+      throw new Error("Unauthorized: You do not have permission to delete this fanart.");
+    }
+
+    // Delete the image from storage
+    if (art.storageId) {
+      await ctx.storage.delete(art.storageId);
+    }
+    // Delete the database entry
+    await ctx.db.delete(args.id);
   },
 });

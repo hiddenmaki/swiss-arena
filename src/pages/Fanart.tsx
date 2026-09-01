@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router";
-import { Swords, Menu, X, Heart, Image as ImageIcon, Upload, Loader2 } from "lucide-react";
+import { Swords, Menu, X, Heart, Image as ImageIcon, Upload, Loader2, Trash2 } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -17,59 +17,7 @@ const fadeUp = {
   }),
 };
 
-function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const links = [
-    { label: "Heroes", href: "/heroes" },
-    { label: "Tierlist", href: "/tierlist" },
-    { label: "Draft Planner", href: "/draft" },
-    { label: "Patch Notes", href: "/patch-notes" },
-    { label: "Esports", href: "/esports" },
-    { label: "Fanart", href: "/fanart" },
-  ];
-  return (
-    <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="flex h-16 items-center justify-between">
-          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
-            <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
-            <div>
-              <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
-              <span className="text-sm font-light tracking-[0.2em] uppercase text-[#dc2626] ml-1">Arena</span>
-            </div>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} className="text-[10px] font-medium tracking-[0.15em] uppercase text-[#888] hover:text-white transition-colors duration-200">
-                {link.label}
-              </Link>
-            ))}
-            <div className="w-px h-4 bg-[#222]" />
-            <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold tracking-[0.15em] uppercase px-6 py-2 h-9 cursor-pointer transition-colors">
-                Play RoV
-              </span>
-            </a>
-          </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-white p-2">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-      {mobileOpen && (
-        <div className="md:hidden bg-[#0a0a0e] border-t border-[#222]">
-          <div className="px-8 py-6 flex flex-col gap-4">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} onClick={() => setMobileOpen(false)} className="text-sm font-medium tracking-[0.1em] uppercase text-[#888] hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
+
 
 
 
@@ -95,6 +43,16 @@ export default function Fanart() {
   const generateUploadUrl = useMutation(api.fanarts.generateUploadUrl);
   const createFanart = useMutation(api.fanarts.create);
   const likeFanart = useMutation(api.fanarts.like);
+  const removeFanart = useMutation(api.fanarts.remove);
+
+  const getOwnerToken = () => {
+    let token = localStorage.getItem("fanart_owner_token");
+    if (!token) {
+      token = crypto.randomUUID();
+      localStorage.setItem("fanart_owner_token", token);
+    }
+    return token;
+  };
 
   const handleLike = async (id: Id<"fanarts">) => {
     const liked = localStorage.getItem(`liked_${id}`);
@@ -123,7 +81,7 @@ export default function Fanart() {
       });
       const { storageId } = await result.json();
       
-      await createFanart({ storageId, title, artist });
+      await createFanart({ storageId, title, artist, ownerToken: getOwnerToken() });
       
       setIsModalOpen(false);
       setTitle("");
@@ -137,8 +95,6 @@ export default function Fanart() {
   };
   return (
     <div className="min-h-screen bg-[#0a0a0e] text-white">
-      <Navbar />
-
       <section className="py-16 border-b border-[#222]">
         <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -148,7 +104,7 @@ export default function Fanart() {
                 <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#dc2626]">Community Art</span>
               </div>
               <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight mb-3">
-                FANART <span className="text-[#666]">GALLERY</span>
+                FANART <span className="text-[#dc2626]">GALLERY</span>
               </h1>
               <p className="text-sm text-[#666] max-w-lg">
                 Explore amazing artwork created by the Arena of Valor community.
@@ -202,14 +158,32 @@ export default function Fanart() {
                         <h3 className="text-sm font-bold text-white tracking-tight group-hover:text-[#dc2626] transition-colors">{art.title}</h3>
                         <div className="text-[10px] tracking-[0.1em] text-[#666] mt-1">by @{art.artist}</div>
                       </div>
-                      <button 
-                        onClick={() => handleLike(art._id)}
-                        disabled={!!hasLiked}
-                        className={`flex items-center gap-1.5 transition-colors ${hasLiked ? 'text-[#dc2626]' : 'text-[#555] hover:text-[#dc2626]'}`}
-                      >
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleLike(art._id)}
+                          disabled={!!hasLiked}
+                          className={`flex items-center gap-1.5 transition-colors ${hasLiked ? 'text-[#dc2626]' : 'text-[#555] hover:text-[#dc2626]'}`}
+                        >
                         <Heart className={`w-4 h-4 ${hasLiked ? 'fill-current' : ''}`} />
-                        <span className="text-[10px] font-bold">{art.likes}</span>
-                      </button>
+                          <span className="text-[10px] font-bold">{art.likes}</span>
+                        </button>
+                        
+                        {(art.ownerToken === getOwnerToken() || getOwnerToken() === "admin_swiss_arena") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm("คุณต้องการลบรูปนี้ใช่หรือไม่?")) {
+                                removeFanart({ id: art._id, ownerToken: getOwnerToken() })
+                                  .catch(() => alert("คุณไม่มีสิทธิ์ลบรูปนี้ครับ"));
+                              }
+                            }}
+                            className="p-1.5 text-[#555] hover:text-[#dc2626] transition-colors rounded hover:bg-[#dc2626]/10"
+                            title="Delete artwork"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 );

@@ -52,97 +52,7 @@ const slideIn = {
 };
 
 /* ─── Navigation ─── */
-function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const links = [
-    { label: "Heroes", href: "/heroes" },
-    { label: "Tierlist", href: "/tierlist" },
-    { label: "Draft Planner", href: "/draft" },
-    { label: "Patch Notes", href: "/patch-notes" },
-    { label: "Esports", href: "/esports" },
-    { label: "Fanart", href: "/fanart" },
-  ];
-
-  return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: bezierEase }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]" : "bg-transparent"
-      }`}
-    >
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="flex h-16 items-center justify-between">
-          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
-            <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
-            <div>
-              <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
-              <span className="text-sm font-light tracking-[0.2em] uppercase text-[#dc2626] ml-1">Arena</span>
-            </div>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-10">
-            {links.map((link) => (
-              <Link
-                key={link.label}
-                to={link.href}
-                className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#888] hover:text-white transition-colors duration-200"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="w-px h-4 bg-[#222]" />
-            <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold tracking-[0.15em] uppercase px-6 py-2 h-9 cursor-pointer transition-colors">
-                Play Free
-              </span>
-            </a>
-          </div>
-
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-white p-2">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {mobileOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="md:hidden bg-[#0a0a0e] border-t border-[#222]"
-        >
-          <div className="px-8 py-6 flex flex-col gap-4">
-            {links.map((link) => (
-              <Link
-                key={link.label}
-                to={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="text-sm font-medium tracking-[0.1em] uppercase text-[#888] hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center justify-center w-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold tracking-[0.15em] uppercase mt-2 px-6 py-2 cursor-pointer transition-colors">
-                Play Free
-              </span>
-            </a>
-          </div>
-        </motion.div>
-      )}
-    </motion.nav>
-  );
-}
 
 /* ─── Hero Section ─── */
 function Hero() {
@@ -259,11 +169,14 @@ function Stats() {
 
   if (!heroes || heroes.length === 0) return null;
 
-  // Shuffle once and split into two rows
+  // Shuffle and take a small subset to prevent mobile memory limits (Safari canvas crash)
   const shuffled = [...heroes].sort(() => 0.5 - Math.random());
-  const half = Math.ceil(shuffled.length / 2);
-  const row1 = [...shuffled.slice(0, half), ...shuffled.slice(0, half), ...shuffled.slice(0, half)];
-  const row2 = [...shuffled.slice(half), ...shuffled.slice(half), ...shuffled.slice(half)];
+  const subset1 = shuffled.slice(0, 15);
+  const subset2 = shuffled.slice(15, 30);
+  
+  // Duplicate exactly once for a seamless -50% translation marquee
+  const row1 = [...subset1, ...subset1];
+  const row2 = [...subset2, ...subset2];
 
   return (
     <section className="relative py-0 border-y border-[#222] overflow-hidden">
@@ -392,7 +305,7 @@ function Features() {
           <h2 className="text-4xl lg:text-6xl font-black text-white tracking-tight">
             SWISS ARENA
             <br />
-            <span className="text-[#666]">TOOLS</span>
+            <span className="text-[#dc2626]">TOOLS</span>
           </h2>
         </motion.div>
 
@@ -448,6 +361,8 @@ function FanartShowcase() {
   const fanarts = useQuery(api.fanarts.list);
   const [displayArts, setDisplayArts] = useState<any[]>([]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (fanarts && displayArts.length === 0 && fanarts.length > 0) {
       const shuffled = [...fanarts].sort(() => 0.5 - Math.random());
@@ -455,8 +370,56 @@ function FanartShowcase() {
     }
   }, [fanarts]);
 
-  // Duplicate items for seamless infinite loop
-  const belt = displayArts.length > 0 ? [...displayArts, ...displayArts, ...displayArts] : [];
+  // Auto-scroll logic for PC (and mobile if untouched)
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || displayArts.length === 0) return;
+
+    let animationFrameId: number;
+    let lastTime = performance.now();
+    let isHovered = false;
+    let isTouching = false;
+
+    const handleMouseEnter = () => isHovered = true;
+    const handleMouseLeave = () => isHovered = false;
+    const handleTouchStart = () => isTouching = true;
+    const handleTouchEnd = () => {
+      setTimeout(() => isTouching = false, 2000); // Wait 2s before resuming after swipe
+    };
+
+    container.addEventListener('mouseenter', handleMouseEnter);
+    container.addEventListener('mouseleave', handleMouseLeave);
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd);
+
+    const scroll = (currentTime: number) => {
+      if (!isHovered && !isTouching) {
+        const deltaTime = currentTime - lastTime;
+        if (deltaTime > 20) { // roughly 50fps
+          container.scrollLeft += 1;
+          lastTime = currentTime;
+          
+          // Reset to beginning if reached the end
+          if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
+            container.scrollLeft = 0;
+          }
+        }
+      } else {
+        lastTime = currentTime; // keep time updated while paused
+      }
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      container.removeEventListener('mouseenter', handleMouseEnter);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [displayArts]);
 
   return (
     <section className="relative py-32 border-y border-[#222]" id="fanart">
@@ -470,7 +433,7 @@ function FanartShowcase() {
             <h2 className="text-4xl lg:text-6xl font-black text-white tracking-tight">
               FANART
               <br />
-              <span className="text-[#666]">GALLERY</span>
+              <span className="text-[#dc2626]">GALLERY</span>
             </h2>
           </div>
           <Link to="/fanart" className="inline-flex items-center border border-[#222] text-[#888] hover:text-white hover:border-white text-[10px] font-bold tracking-[0.2em] uppercase px-8 py-3 transition-colors">
@@ -483,24 +446,21 @@ function FanartShowcase() {
         ) : displayArts.length === 0 && fanarts.length === 0 ? (
            <div className="py-20 text-center text-[#666] text-sm uppercase tracking-widest font-bold">No Fanarts Yet</div>
         ) : (
-          <div className="relative overflow-hidden">
-            {/* Left fade */}
-            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
-            {/* Right fade */}
-            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+          <div className="relative -mx-4 md:-mx-8 lg:-mx-16 px-4 md:px-8 lg:px-16 overflow-hidden">
+            {/* Fade edges on desktop */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 md:w-16 lg:w-32 bg-gradient-to-r from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 md:w-16 lg:w-32 bg-gradient-to-l from-[#0a0a0e] to-transparent z-10 pointer-events-none" />
 
-            <div
-              className="flex gap-4"
-              style={{
-                animation: "fanart-scroll 30s linear infinite",
-                width: "max-content",
-              }}
+            <div 
+              ref={scrollRef}
+              className="flex gap-4 lg:gap-6 overflow-x-auto no-scrollbar pb-8 pt-4"
+              style={{ scrollBehavior: 'auto' }}
             >
-              {belt.map((art, i) => (
+              {displayArts.map((art, i) => (
                 <Link
                   to="/fanart"
-                  key={`${art._id}-${i}`}
-                  className="group relative flex-shrink-0 w-56 h-72 overflow-hidden bg-[#111] border border-[#222] hover:border-[#10b981] transition-colors"
+                  key={art._id}
+                  className="group relative flex-shrink-0 w-64 h-80 overflow-hidden bg-[#111] border border-[#222] hover:border-[#10b981] transition-colors"
                 >
                   {art.imageUrl && (
                     <img
@@ -511,9 +471,9 @@ function FanartShowcase() {
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e] via-[#0a0a0e]/20 to-transparent opacity-90 group-hover:opacity-80 transition-opacity" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-sm font-bold text-white tracking-tight mb-1 truncate">{art.title}</h3>
-                    <div className="text-[9px] tracking-[0.1em] uppercase text-[#10b981]">By {art.artist}</div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <h3 className="text-base font-bold text-white tracking-tight mb-1 truncate">{art.title}</h3>
+                    <div className="text-[10px] tracking-[0.1em] uppercase text-[#10b981]">By {art.artist}</div>
                   </div>
                 </Link>
               ))}
@@ -576,7 +536,7 @@ function GameModes() {
           <h2 className="text-4xl lg:text-6xl font-black text-white tracking-tight">
             MULTIPLE
             <br />
-            <span className="text-[#666]">GAME MODES</span>
+            <span className="text-[#dc2626]">GAME MODES</span>
           </h2>
         </motion.div>
 
@@ -707,10 +667,10 @@ const InstagramIcon = (props: any) => (
 /* ─── Community Section ─── */
 function Community() {
   const channels = [
-    { label: "Discord", members: "2.4M Members", icon: DiscordIcon, href: "https://discord.com/invite/rov-mvp-club-1148485520540844122" },
-    { label: "Facebook", members: "18M Likes", icon: FacebookIcon, href: "https://www.facebook.com/ROVTH" },
-    { label: "YouTube", members: "5.2M Subscribers", icon: YouTubeIcon, href: "https://www.youtube.com/GarenaRoVThailand" },
-    { label: "Instagram", members: "8.7M Followers", icon: InstagramIcon, href: "https://www.instagram.com/garena_rov_official" },
+    { label: "Discord", members: "53K MEMBERS", icon: DiscordIcon, href: "https://discord.com/invite/rov-mvp-club-1148485520540844122" },
+    { label: "Facebook", members: "5.3M LIKES", icon: FacebookIcon, href: "https://www.facebook.com/ROVTH" },
+    { label: "YouTube", members: "4M SUBSCRIBERS", icon: YouTubeIcon, href: "https://www.youtube.com/GarenaRoVThailand" },
+    { label: "Instagram", members: "785K FOLLOWERS", icon: InstagramIcon, href: "https://www.instagram.com/garena_rov_official" },
   ];
 
   return (
@@ -793,106 +753,6 @@ function CTA() {
   );
 }
 
-/* ─── Footer ─── */
-function Footer() {
-  const footerLinks = [
-    {
-      title: "Heroes",
-      links: [
-        { label: "Hero Catalog", href: "/heroes" },
-        { label: "Tier Lists", href: "/heroes" },
-        { label: "Counter Picks", href: "/heroes" },
-        { label: "Synergies", href: "/heroes" },
-      ],
-    },
-    {
-      title: "Tools",
-      links: [
-        { label: "Draft Planner", href: "/draft" },
-        { label: "Strategy Guides", href: "#features" },
-        { label: "Patch Notes", href: "#" },
-        { label: "Ranked Stats", href: "#" },
-      ],
-    },
-    {
-      title: "Community",
-      links: [
-        { label: "Discord", href: "#" },
-        { label: "Reddit", href: "#" },
-        { label: "YouTube", href: "#" },
-        { label: "Content Creators", href: "#" },
-      ],
-    },
-    {
-      title: "Game",
-      links: [
-        { label: "Download RoV", href: "https://www.garena.com" },
-        { label: "Esports", href: "#" },
-        { label: "Official Site", href: "https://www.garena.com" },
-        { label: "Support", href: "#" },
-      ],
-    },
-  ];
-
-  return (
-    <footer className="relative bg-[#060608] pt-20 pb-12">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 pb-16 border-b border-[#222]">
-          <div className="col-span-2 md:col-span-4 lg:col-span-1 mb-8 lg:mb-0">
-            <div className="flex items-center gap-3 mb-6">
-              <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
-              <div>
-                <span className="text-xs font-bold tracking-[0.15em] uppercase text-white">Swiss</span>
-                <span className="text-xs font-light tracking-[0.15em] uppercase text-[#dc2626] ml-1">Arena</span>
-              </div>
-            </div>
-            <p className="text-xs leading-relaxed text-[#555] max-w-[200px]">
-              The community hub for Arena of Valor. Guides, hero data,
-              draft tools, and strategy — built for competitive players.
-            </p>
-          </div>
-
-          {footerLinks.map((col) => (
-            <div key={col.title}>
-              <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#dc2626] mb-5">{col.title}</h4>
-              <ul className="space-y-3">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    {link.href.startsWith("/") ? (
-                      <Link to={link.href} className="text-[11px] text-[#666] hover:text-white transition-colors tracking-wide">
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a
-                        href={link.href}
-                        target={link.href.startsWith("http") ? "_blank" : undefined}
-                        rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                        className="text-[11px] text-[#666] hover:text-white transition-colors tracking-wide"
-                      >
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8">
-          <div className="flex items-center gap-6">
-            <span className="text-[10px] tracking-[0.15em] uppercase text-[#333]">© 2026 Garena. All Rights Reserved.</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#" className="text-[10px] tracking-[0.1em] uppercase text-[#333] hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="text-[10px] tracking-[0.1em] uppercase text-[#333] hover:text-white transition-colors">Terms</a>
-            <a href="#" className="text-[10px] tracking-[0.1em] uppercase text-[#333] hover:text-white transition-colors">EULA</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
 
 /* ─── Main Landing Page ─── */
 export default function Landing() {
@@ -913,7 +773,6 @@ export default function Landing() {
       transition={{ duration: 0.4 }}
       className="min-h-screen bg-[#0a0a0e] text-white"
     >
-      <Navbar />
       <Hero />
       <Stats />
       <Features />
@@ -922,7 +781,6 @@ export default function Landing() {
       <Esports />
       <Community />
       <CTA />
-      <Footer />
     </motion.div>
   );
 }

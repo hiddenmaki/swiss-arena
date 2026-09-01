@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router";
-import { Swords, Search, X, Menu, Crown, Clock, CheckCircle2, Shield, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Swords, Search, X, Menu, Crown, Clock, CheckCircle2, Shield, ChevronLeft, ChevronRight, Loader2, Pause, Play, Undo2 } from "lucide-react";
 import { type Hero, type HeroRole } from "@/data/heroes";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -18,59 +18,7 @@ const roleColors: Record<HeroRole, string> = {
   Tank: "text-[#888] border-[#888/0.2] bg-[#888/0.1]",
 };
 
-function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const links = [
-    { label: "Heroes", href: "/heroes" },
-    { label: "Tierlist", href: "/tierlist" },
-    { label: "Draft Planner", href: "/draft" },
-    { label: "Patch Notes", href: "/patch-notes" },
-    { label: "Esports", href: "/esports" },
-    { label: "Fanart", href: "/fanart" },
-  ];
-  return (
-    <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="flex h-16 items-center justify-between">
-          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
-            <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
-            <div>
-              <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
-              <span className="text-sm font-light tracking-[0.2em] uppercase text-[#dc2626] ml-1">Arena</span>
-            </div>
-          </Link>
-          <div className="hidden md:flex items-center gap-10">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#888] hover:text-white transition-colors duration-200">
-                {link.label}
-              </Link>
-            ))}
-            <div className="w-px h-4 bg-[#222]" />
-            <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold tracking-[0.15em] uppercase px-6 py-2 h-9 cursor-pointer transition-colors">
-                Play RoV
-              </span>
-            </a>
-          </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-white p-2">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-      {mobileOpen && (
-        <div className="md:hidden bg-[#0a0a0e] border-t border-[#222]">
-          <div className="px-8 py-6 flex flex-col gap-4">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} onClick={() => setMobileOpen(false)} className="text-sm font-medium tracking-[0.1em] uppercase text-[#888] hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
+
 
 // ─── Draft Sequence Logic ───
 type DraftAction = { side: "blue" | "red"; type: "ban" | "pick"; expectedRole?: HeroRole };
@@ -109,6 +57,7 @@ export default function DraftPlanner() {
   const [selectedHero, setSelectedHero] = useState<Hero | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [timeLeft, setTimeLeft] = useState(30);
+  const [isPaused, setIsPaused] = useState(false);
 
   const isDraftComplete = currentStep >= DRAFT_SEQUENCE.length;
   const currentAction = isDraftComplete ? null : DRAFT_SEQUENCE[currentStep];
@@ -122,12 +71,12 @@ export default function DraftPlanner() {
   });
 
   useEffect(() => {
-    if (isDraftComplete) return;
+    if (isDraftComplete || isPaused) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, [currentStep, isDraftComplete]);
+  }, [currentStep, isDraftComplete, isPaused]);
 
   useEffect(() => {
     if (timeLeft === 0) {
@@ -218,6 +167,18 @@ export default function DraftPlanner() {
     setSearchQuery("");
     setCurrentStep((prev) => prev + 1);
     setTimeLeft(30); // reset timer
+  };
+
+  const handleUndo = () => {
+    if (currentStep === 0) return;
+    setDraftData((prev) => {
+      const next = [...prev];
+      next[currentStep - 1] = null;
+      return next;
+    });
+    setCurrentStep((prev) => prev - 1);
+    setSelectedHero(null);
+    setTimeLeft(30);
   };
 
   const renderPickSlot = (hero: Hero | null, side: "blue" | "red", index: number, isCurrentTurn: boolean) => (
@@ -327,8 +288,6 @@ export default function DraftPlanner() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0e] text-white flex flex-col">
-      <Navbar />
-
       {/* Header */}
       <div className="bg-[#050505] border-b border-[#222] py-4">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8 flex flex-wrap justify-between items-center gap-y-4">
@@ -347,10 +306,27 @@ export default function DraftPlanner() {
               <div className="text-xl lg:text-2xl font-black text-[#10b981] tracking-tight uppercase">Draft Complete</div>
             ) : (
               <>
-                <div className="text-[9px] lg:text-[10px] tracking-[0.2em] font-bold uppercase text-[#888] mb-1">
-                  {currentAction.side.toUpperCase()} TEAM {currentAction.type.toUpperCase()}
+                <div className="flex items-center gap-4 mb-1">
+                  <button 
+                    onClick={() => setIsPaused(!isPaused)}
+                    className={`p-1.5 rounded-full border transition-colors ${isPaused ? 'border-[#dc2626] text-[#dc2626] bg-[#dc2626]/10' : 'border-[#333] text-[#888] hover:text-white hover:border-[#555]'}`}
+                    title={isPaused ? "Resume Timer" : "Pause Timer"}
+                  >
+                    {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                  </button>
+                  <div className="text-[9px] lg:text-[10px] tracking-[0.2em] font-bold uppercase text-[#888]">
+                    {currentAction.side.toUpperCase()} TEAM {currentAction.type.toUpperCase()}
+                  </div>
+                  <button 
+                    onClick={handleUndo}
+                    disabled={currentStep === 0}
+                    className={`p-1.5 rounded-full border transition-colors ${currentStep === 0 ? 'opacity-30 cursor-not-allowed border-[#222] text-[#555]' : 'border-[#333] text-[#888] hover:text-white hover:border-[#555]'}`}
+                    title="Undo Last Pick/Ban"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className={`text-3xl lg:text-4xl font-black tabular-nums leading-none ${timeLeft <= 10 ? 'text-[#dc2626]' : 'text-white'}`}>
+                <div className={`text-3xl lg:text-4xl font-black tabular-nums leading-none ${isPaused ? 'text-[#555]' : timeLeft <= 10 ? 'text-[#dc2626] animate-pulse' : 'text-white'}`}>
                   {timeLeft.toString().padStart(2, '0')}
                 </div>
               </>
@@ -427,7 +403,7 @@ export default function DraftPlanner() {
                     onClick={() => handleSelectHero(hero as unknown as Hero)}
                     className={`relative aspect-[3/4] border transition-all overflow-hidden flex flex-col justify-end p-2 lg:p-3 ${
                       selectedHero?.id === hero.id 
-                        ? currentAction?.side === "blue" ? "border-[#3b82f6] shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-105 z-10" : "border-[#dc2626] shadow-[0_0_15px_rgba(220,38,38,0.3)] scale-105 z-10"
+                        ? currentAction?.side === "blue" ? "border-[#3b82f6] shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105 z-10" : "border-[#dc2626] shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-105 z-10"
                         : "border-[#222] hover:border-[#444] opacity-80 hover:opacity-100"
                     } bg-[#111] group`}
                   >
@@ -490,7 +466,7 @@ export default function DraftPlanner() {
                       onClick={handleLockIn}
                       className={`w-full sm:w-auto px-6 lg:px-10 py-3 lg:py-4 font-black text-xs lg:text-sm tracking-[0.2em] uppercase transition-colors flex-shrink-0 ${
                         currentAction?.type === "ban" 
-                          ? "bg-[#222] hover:bg-[#333] text-[#888] hover:text-white" 
+                          ? "bg-[#dc2626] hover:bg-[#b91c1c] text-white border border-[#dc2626]" 
                           : currentAction?.side === "blue" 
                             ? "bg-[#3b82f6] hover:bg-[#2563eb] text-white" 
                             : "bg-[#dc2626] hover:bg-[#b91c1c] text-white"

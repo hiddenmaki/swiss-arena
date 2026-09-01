@@ -10,6 +10,7 @@
 
 import type * as fanarts from "../fanarts.js";
 import type * as heroes from "../heroes.js";
+import type * as seed from "../seed.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   fanarts: typeof fanarts;
   heroes: typeof heroes;
+  seed: typeof seed;
 }>;
 
 /**

@@ -20,59 +20,7 @@ const fadeUp = {
 
 
 
-function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const links = [
-    { label: "Heroes", href: "/heroes" },
-    { label: "Tierlist", href: "/tierlist" },
-    { label: "Draft Planner", href: "/draft" },
-    { label: "Patch Notes", href: "/patch-notes" },
-    { label: "Esports", href: "/esports" },
-    { label: "Fanart", href: "/fanart" },
-  ];
-  return (
-    <nav className="sticky top-0 z-50 bg-[#0a0a0e]/95 backdrop-blur-md border-b border-[#222]">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
-        <div className="flex h-16 items-center justify-between">
-          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-3">
-            <img src="/favicon.png" alt="Logo" className="h-12 w-12 object-contain drop-shadow-md scale-110" />
-            <div>
-              <span className="text-sm font-bold tracking-[0.2em] uppercase text-white">Swiss</span>
-              <span className="text-sm font-light tracking-[0.2em] uppercase text-[#dc2626] ml-1">Arena</span>
-            </div>
-          </Link>
-          <div className="hidden md:flex items-center gap-10">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#888] hover:text-white transition-colors duration-200">
-                {link.label}
-              </Link>
-            ))}
-            <div className="w-px h-4 bg-[#222]" />
-            <a href="https://www.garena.com" target="_blank" rel="noopener noreferrer">
-              <span className="inline-flex items-center bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold tracking-[0.15em] uppercase px-6 py-2 h-9 cursor-pointer transition-colors">
-                Play RoV
-              </span>
-            </a>
-          </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-white p-2">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-      {mobileOpen && (
-        <div className="md:hidden bg-[#0a0a0e] border-t border-[#222]">
-          <div className="px-8 py-6 flex flex-col gap-4">
-            {links.map((link) => (
-              <Link key={link.label} to={link.href} onClick={() => setMobileOpen(false)} className="text-sm font-medium tracking-[0.1em] uppercase text-[#888] hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
+
 
 export default function HeroCatalog() {
   const [query, setQuery] = useState("");
@@ -102,8 +50,6 @@ export default function HeroCatalog() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0e] text-white">
-      <Navbar />
-
       <section className="py-16 border-b border-[#222]">
         <div className="mx-auto max-w-[1440px] px-4 md:px-8 lg:px-16">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -112,7 +58,7 @@ export default function HeroCatalog() {
               <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#dc2626]">Hero Roster</span>
             </div>
             <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight mb-3">
-              ALL <span className="text-[#666]">HEROES</span>
+              ALL <span className="text-[#dc2626]">HEROES</span>
             </h1>
             <p className="text-sm text-[#666] max-w-lg">
               Browse every hero in the game. Filter by role, tier, or search by name to find the champion that fits your playstyle.

@@ -78,10 +78,10 @@
 
 @keyframes fanart-scroll {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-33.333%); }
+  100% { transform: translateX(-50%); }
 }
 
 @keyframes fanart-scroll-reverse {
-  0% { transform: translateX(-33.333%); }
+  0% { transform: translateX(-50%); }
   100% { transform: translateX(0); }
 }

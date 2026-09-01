@@ -35,5 +35,6 @@ export default defineSchema({
     artist: v.string(),
     storageId: v.id("_storage"),
     likes: v.number(),
+    ownerToken: v.optional(v.string()),
   }),
 });
