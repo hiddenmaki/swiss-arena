@@ -1,5 +1,7 @@
 ## Overview
 
+<img width="1827" height="973" alt="image" src="https://github.com/user-attachments/assets/07cf4c7b-ba70-460e-9a62-b36a5ba5fbc7" />
+
 This project uses the following tech stack:
 - Vite
 - Typescript
